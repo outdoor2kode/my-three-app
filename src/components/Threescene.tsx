@@ -5,7 +5,7 @@ import * as THREE from "three";
 // @ts-expect-error no type declarations for OrbitControls
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 // @ts-expect-error no type declarations for GLTFLoader
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader"; 
 
 export default function ThreeBunnies() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -46,7 +46,7 @@ export default function ThreeBunnies() {
 	const velocities = new Map<THREE.Object3D, THREE.Vector3>();
 	const angularVelocities = new Map<THREE.Object3D, THREE.Vector3>();
 
-	loader.load("/models/ghost.glb", (gltf) => {
+	loader.load("/models/ghost.glb", (gltf: GLTF) => {
 		for (let i = 0; i < 5; i++) {
 		  const bunny = gltf.scene.clone();
 		  bunny.position.set(
