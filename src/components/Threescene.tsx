@@ -57,6 +57,23 @@ export default function ThreeBunnies() {
     const bunnies: THREE.Object3D[] = [];
     const bunnyBodies: CANNON.Body[] = [];
 
+	// 太空漂浮參數
+	const floatParams = {
+	baseForce: 0.02,
+	waveAmplitude: 0.01,
+	waveFrequency: 0.002,
+	rotationSpeed: 0.5,
+	maxVelocity: 2.0
+	};
+
+	// 每個兔子的漂浮狀態
+	const floatStates: Array<{
+	timeOffset: number;
+	rotAxis: THREE.Vector3;
+	rotSpeed: number;
+	floatDir: THREE.Vector2;
+	}> = [];
+
     // === Raycaster for click / hover ===
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -217,6 +234,21 @@ export default function ThreeBunnies() {
             0
           );
         }
+
+		// 初始化漂浮狀態
+		floatStates.push({
+			timeOffset: Math.random() * Math.PI * 2,
+			rotAxis: new THREE.Vector3(
+			(Math.random() - 0.5) * 2,
+			(Math.random() - 0.5) * 2,
+			(Math.random() - 0.5) * 2
+			).normalize(),
+			rotSpeed: (Math.random() * 0.5 + 0.5) * floatParams.rotationSpeed,
+			floatDir: new THREE.Vector2(
+			(Math.random() - 0.5) * 2,
+			(Math.random() - 0.5) * 2
+			).normalize()
+		});
       }
     });
 
@@ -401,15 +433,66 @@ grabbedIndex = null;
       const delta = clock.getDelta();
       world.step(1 / 60, delta, 3);
 
-      // 太空模式 → 小漂浮力
-      if (!gravityOn) {
-        bunnyBodies.forEach((body) => {
-          if (body.mass > 0) {
-            body.velocity.x += (Math.random() - 0.5) * 0.01;
-            body.velocity.y += (Math.random() - 0.5) * 0.01;
-          }
-        });
-      }
+      // 增強的太空漂浮效果
+if (!gravityOn) {
+	const time = clock.getElapsedTime();
+	
+	bunnyBodies.forEach((body, i) => {
+	  if (body.mass > 0 && floatStates[i]) {
+		const state = floatStates[i];
+		const t = time + state.timeOffset;
+		
+		// 波動式漂浮力
+		const waveX = Math.sin(t * floatParams.waveFrequency) * floatParams.waveAmplitude;
+		const waveY = Math.cos(t * floatParams.waveFrequency * 1.3) * floatParams.waveAmplitude;
+		
+		// 基礎漂浮力 + 波動
+		const forceX = state.floatDir.x * floatParams.baseForce + waveX;
+		const forceY = state.floatDir.y * floatParams.baseForce + waveY;
+		
+		body.velocity.x += forceX;
+		body.velocity.y += forceY;
+		
+		// 速度限制
+		const speed = Math.hypot(body.velocity.x, body.velocity.y);
+		if (speed > floatParams.maxVelocity) {
+		  const scale = floatParams.maxVelocity / speed;
+		  body.velocity.x *= scale;
+		  body.velocity.y *= scale;
+		}
+		
+		// 自然旋轉
+		body.angularVelocity.z += Math.sin(t * state.rotSpeed) * 0.03;
+
+		// 邊界反彈檢測
+		const aspect = window.innerWidth / window.innerHeight;
+		const frustumHeight = camera.position.z * Math.tan((camera.fov * Math.PI) / 360) * 2;
+		const frustumWidth = frustumHeight * aspect;
+		const halfW = frustumWidth / 2;
+		const halfH = frustumHeight / 2;
+
+		const margin = 1.0; // 邊界緩衝區
+
+		// 檢測並反彈
+		if (body.position.x > halfW - margin) {
+		body.velocity.x = Math.min(body.velocity.x, -0.5);
+		state.floatDir.x = -Math.abs(state.floatDir.x);
+		}
+		if (body.position.x < -halfW + margin) {
+		body.velocity.x = Math.max(body.velocity.x, 0.5);
+		state.floatDir.x = Math.abs(state.floatDir.x);
+		}
+		if (body.position.y > halfH - margin) {
+		body.velocity.y = Math.min(body.velocity.y, -0.5);
+		state.floatDir.y = -Math.abs(state.floatDir.y);
+		}
+		if (body.position.y < -halfH + margin) {
+		body.velocity.y = Math.max(body.velocity.y, 0.5);
+		state.floatDir.y = Math.abs(state.floatDir.y);
+		}
+	  }
+	});
+  }
 
       // 同步位置
       for (let i = 0; i < bunnies.length; i++) {
