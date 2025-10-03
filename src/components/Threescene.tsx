@@ -41,6 +41,7 @@ export default function ThreeBunnies() {
     // === CANNON 世界 ===
     const world = new CANNON.World();
     world.broadphase = new CANNON.NaiveBroadphase();
+	// @ts-expect-error no type declarations for NaiveBroadphase
     world.solver.iterations = 10;
 
 	// 👉 拋擲狀態（只給 landscape 用）
